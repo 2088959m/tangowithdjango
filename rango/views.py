@@ -27,7 +27,7 @@ def category(request, category_name_slug):
 
         context_dict['pages'] = pages
         context_dict['category'] = category
-        print pages
+
     except Category.DoesNotExist:
         pass
 
