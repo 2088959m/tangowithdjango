@@ -32,8 +32,8 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User)
 
     # The additional attributes we wish to include.
-    website = models.URLField(blank=True)
-    picture = models.ImageField(upload_to='profile_images', blank=True)
+    website = models.URLField(blank=True, help_text='Website: ')
+    picture = models.ImageField(upload_to='profile_images', blank=True, help_text='Picture: ')
 
     # Override the __unicode__() method to return out something meaningful!
     def __unicode__(self):

@@ -1,0 +1,23 @@
+{% extends "rango/base.html" %}
+
+
+{% block body_block %}
+    <form role="form"  method="post" action="{% url 'add_profile' %}">
+
+        <h2 class="form-signin-heading">Create a profile</h2>
+        {% csrf_token %}
+        {% for hidden in form.hidden_fields %}
+            {{ hidden }}
+        {% endfor %}
+
+        {% for field in form.visible_fields %}
+            {{ field.errors }}
+            {{ field.help_text }}
+            {{ field }}
+            <br />
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+
+    </form>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "rango/base.html" %}
+
+{% load staticfiles %}
+
+{% block title %}Profile{% endblock %}
+
+{% block body_block %}
+    <div>
+        <h2>{{ current_user.username }}</h2>
+        <p>Email: {{ current_user.email }}</p>
+
+        {% if user_profile %}
+            <p>Website: <a href="{{ user_profile.website }}">{{ user_profile.website }}</a></p>
+            <br/>
+
+            {% if user_profile.picture %}
+
+                <img src="{{ user_profile.picture.url }}" alt="profile picture" />
+
+
+            {% endif %}
+        {% endif %}
+    </div>
+
+
+    {% if user == current_user %}
+
+        <form role="form"  method="post" action="{% url 'profile' current_user.username %}" enctype="multipart/form-data">
+            <h3>Edit your profile</h3>
+
+            {% csrf_token %}
+            {% for field in form.visible_fields %}
+                {{ field.errors }}
+                {{ field.help_text }}
+                {{ field }}
+                <br />
+            {% endfor %}
+
+            <button class="btn btn-primary" type="submit" name="submit">Save Changes</button>
+
+
+
+        </form>
+
+    {% endif %}
+{% endblock %}

@@ -1,11 +1,13 @@
-from django.shortcuts import render
+from django.contrib.auth.models import User
+from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse, HttpResponseRedirect
-from rango.models import Category, Page
+from rango.models import Category, Page, UserProfile
 from rango.forms import CategoryForm, PageForm, UserForm, UserProfileForm
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
 from rango.bing_search import run_query
+
 
 def index(request):
 
@@ -52,16 +54,27 @@ def about(request):
 
 def category(request, category_name_slug):
     context_dict = {}
+    context_dict['result_list'] = None
+    context_dict['query'] = None
+    if request.method == 'POST':
+        query = request.POST['query'].strip()
+
+        if query:
+            # Run our Bing function to get the results list!
+            result_list = run_query(query)
+
+            context_dict['result_list'] = result_list
+            context_dict['query'] = query
 
     try:
         category = Category.objects.get(slug=category_name_slug)
         context_dict['category_name'] = category.name
-
-        pages = Page.objects.filter(category=category)
-
+        pages = Page.objects.filter(category=category).order_by('-views')
         context_dict['pages'] = pages
         context_dict['category'] = category
-        context_dict['category_name_slug'] = category_name_slug
+
+        if not context_dict['query']:
+            context_dict['query'] = category.name
 
     except Category.DoesNotExist:
         pass
@@ -126,17 +139,89 @@ def restricted(request):
     return render(request, 'rango/restricted.html', {})
 
 
-def search(request):
+def track_url(request):
 
-    result_list = []
+    url = '/rango/'
+    if request.method == 'GET':
+        if 'page_id' in request.GET:
+            page_id = request.GET['page_id']
+            try:
+                page = Page.objects.get(id=page_id)
+                page.views += 1
+                page.save()
+                url = page.url
+            except:
+                pass
+
+    return redirect(url)
+
+
+def register_profile(request):
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST)
+        if form.is_valid():
+            profile = form.save(commit=False)
+            profile.user = request.user
+
+            if 'picture' in request.FILES:
+                profile.picture = request.FILES['picture']
+
+            profile.save()
+
+            return index(request)
+
+        else:
+            print form.errors
+    else:
+        form = UserProfileForm()
+
+    return render(request, 'rango/profile_registration.html', {'form': form})
+
+
+@login_required
+def profile(request, username):
+    context_dict = {}
+    current_user = User.objects.get(username=username)
+    context_dict['current_user'] = current_user
+
+    try:
+        user_profile = UserProfile.objects.get(user=current_user)
+    except:
+        user_profile = None
+
+    context_dict['user_profile'] = user_profile
 
     if request.method == 'POST':
-        query = request.POST['query'].strip()
+        form = UserProfileForm(request.POST)
 
-        if query:
-            # Run our Bing function to get the results list!
-            result_list = run_query(query)
+        # Have we been provided with a valid form?
+        if form.is_valid():
+            profile = UserProfile.objects.get(user=current_user)
 
-    return render(request, 'rango/search.html', {'result_list': result_list})
+            if 'website' in request.POST:
+                website = request.POST['website']
+                if website != '':
+                    profile.website = website
+            if 'picture' in request.FILES:
+                profile.picture = request.FILES['picture']
+
+            profile.save()
+
+            return HttpResponseRedirect('/rango/profile/' + username)
+
+        else:
+            # The supplied form contained errors - just print them to the terminal.
+            print form.errors
+    else:
+        # If the request was not a POST, display the form to enter details.
+        form = UserProfileForm()
+
+    context_dict['form'] = form
+
+    return render(request, 'rango/profile.html', context_dict)
 
 
+def users(request):
+    users = User.objects.all()
+
+    return render(request, 'rango/users.html', {'users': users})
